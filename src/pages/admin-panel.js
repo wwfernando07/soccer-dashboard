@@ -8,6 +8,8 @@ export default function AdminPanel() {
     const [user, setUser] = useState(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [users, setUsers] = useState([]);
+    const [searchTerm, setSearchTerm] = useState(""); // Search input
+    const [filterRole, setFilterRole] = useState("all"); // Role filter
     const router = useRouter();
 
     useEffect(() => {
@@ -16,8 +18,6 @@ export default function AdminPanel() {
                 router.push("/login");
             } else {
                 setUser(currentUser);
-                // Check if user is an admin
-                const userRef = doc(db, "users", currentUser.uid);
                 const userSnap = await getDocs(collection(db, "users"));
 
                 if (userSnap.docs.length > 0) {
@@ -59,6 +59,13 @@ export default function AdminPanel() {
         router.push("/login");
     };
 
+    // Filter users based on search term and selected role
+    const filteredUsers = users.filter((u) => 
+        (filterRole === "all" || u.role === filterRole) &&
+        (u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        u.email.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
     if (!user) return <p>Loading...</p>;
     if (!isAdmin) return <p>Checking admin status...</p>;
 
@@ -69,7 +76,27 @@ export default function AdminPanel() {
             <button onClick={handleLogout}>Logout</button>
 
             <h2>All Users</h2>
-            <table border="1" style={{ margin: "auto" }}>
+
+            {/* Search & Filter Controls */}
+            <input 
+                type="text" 
+                placeholder="Search by name or email..." 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
+                style={{ marginBottom: "10px", padding: "5px", width: "300px" }}
+            />
+
+            <select 
+                value={filterRole} 
+                onChange={(e) => setFilterRole(e.target.value)}
+                style={{ marginLeft: "10px", padding: "5px" }}
+            >
+                <option value="all">All Roles</option>
+                <option value="admin">Admin</option>
+                <option value="user">User</option>
+            </select>
+
+            <table border="1" style={{ margin: "auto", marginTop: "20px" }}>
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -79,39 +106,21 @@ export default function AdminPanel() {
                     </tr>
                 </thead>
                 <tbody>
-    {users.map((u) => (
-        <tr key={u.id} className="text-center border-b">
-            <td className="flex items-center gap-2 p-4">
-                <img 
-                    src={u.photoURL || "/default-avatar.png"} 
-                    alt="Profile" 
-                    className="w-10 h-10 rounded-full border"
-                />
-                {u.name}
-            </td>
-            <td className="p-4">{u.email}</td>
-            <td className="p-4">{u.role}</td>
-            <td className="p-4">
-                {u.role !== "admin" ? (
-                    <button
-                        onClick={() => makeAdmin(u.id)}
-                        className="bg-blue-500 hover:bg-blue-700 text-white px-3 py-1 rounded-md"
-                    >
-                        Make Admin
-                    </button>
-                ) : (
-                    <button
-                        onClick={() => removeAdmin(u.id)}
-                        className="bg-yellow-500 hover:bg-yellow-700 text-white px-3 py-1 rounded-md"
-                    >
-                        Remove Admin
-                    </button>
-                )}
-            </td>
-        </tr>
-    ))}
-</tbody>
-
+                    {filteredUsers.map((u) => (
+                        <tr key={u.id}>
+                            <td>{u.name}</td>
+                            <td>{u.email}</td>
+                            <td>{u.role}</td>
+                            <td>
+                                {u.role !== "admin" ? (
+                                    <button onClick={() => makeAdmin(u.id)}>Make Admin</button>
+                                ) : (
+                                    <button onClick={() => removeAdmin(u.id)}>Remove Admin</button>
+                                )}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
             </table>
         </div>
     );
